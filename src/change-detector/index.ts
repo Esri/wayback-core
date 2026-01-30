@@ -231,18 +231,22 @@ const getReleasesWithLocalChanges = async ({
         const waybackMapServerBaseUrl = getWaybackServiceBaseURL();
 
         /**
-         * Sending tilemap requests to retrieve information about a specific wayback release.
-         * It performs a recursive operation to track wayback releases with local changes and builds an array of corresponding release numbers.
+         * Recursively sends tilemap requests to identify all wayback releases with local changes for the specified tile.
          *
-         * Whenever we encounter a value in the 'data' property of the tilemap request response equal to `[1]`, we proceed to check for a release number in the 'select' property.
-         * If a release number exists in the 'select' property, we add that release number to an array used for tracking releases with local changes. Otherwise, we add the release number
-         * used for the current tilemap request to the same array. Afterward, to determine the release number for the subsequent tilemap request, we retrieve the release number preceding
-         * the last one added to the array. We then initiate the tilemap request with this new release number and continue this process iteratively until reaching the earliest release
-         * (i.e., the 2014 release with the release number 10).
+         * How it works:
+         * 1. Sends a tilemap request to the wayback map server for the given release number.
+         * 2. Parses the response to determine if local changes exist:
+         *    - `data[0]`: A truthy value (e.g., 1) indicates that the tile has local changes in some wayback release.
+         *    - `select[0]`: Contains the release number of the closest wayback version with local changes.
+         *                   If not present, the current release number is used.
+         *    - `size[0]`: The size (in bytes) of the tile image data for this release.
+         * 3. If local changes are detected (`data[0]` is truthy):
+         *    - Adds the release number and tile size to the results array.
+         *    - Retrieves the preceding release number and recursively calls this function to check for earlier changes.
+         * 4. The recursion continues backward through releases until no more local changes are found,
+         *    at which point the Promise resolves with the accumulated results.
          *
-         * @param releaseNumber The release number used for the tilemap request
-         * @returns A Promise that resolves with an array containing release numbers associated with local changes
-         *          found in World Imagery Wayback items.
+         * @param releaseNumber The release number to query for local changes
          */
         const tilemapRequest = async (releaseNumber: number) => {
             try {
