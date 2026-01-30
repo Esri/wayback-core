@@ -55,6 +55,13 @@ export type IResponseGetImageData = {
     data: Uint8Array;
 };
 
+/**
+ * Retrieves image data from the specified URL as an arraybuffer.
+ * @param imageUrl - The URL of the image to fetch
+ * @param releaseNumber - The release number associated with the image
+ * @returns A promise that resolves to an object containing the release number and image data as a Uint8Array.
+ *          If the request fails, returns an empty Uint8Array.
+ */
 export const getImageData = async (
     imageUrl: string,
     releaseNumber: number
