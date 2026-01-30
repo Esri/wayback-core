@@ -319,10 +319,10 @@ export const removeDuplicates = async (
     // as tile images at these zoom levels have less updates and changes over time
     // thus are less likely to have duplicate images
     if (zoomLevel <= 11) {
-        console.log(
-            'Skipping duplicate removal process for zoom level',
-            zoomLevel
-        );
+        // console.log(
+        //     'Skipping duplicate removal process for zoom level',
+        //     zoomLevel
+        // );
         return candidates.map((c) => c.releaseNumber);
     }
 
