@@ -85,7 +85,7 @@ export const getWaybackItemsWithLocalChanges = async (
     const column = long2tile(longitude, level);
     const row = lat2tile(latitude, level);
 
-    const releaseNums = await getReleaseNumOfWaybackItemsWithLocalChanges({
+    const releaseWithLocalChanges = await getReleasesWithLocalChanges({
         column,
         row,
         level,
@@ -94,7 +94,9 @@ export const getWaybackItemsWithLocalChanges = async (
     // Constructs Candidate objects with release numbers and corresponding image URLs
     const candidates: Candidate[] = [];
 
-    for (const releaseNumber of releaseNums) {
+    for (const d of releaseWithLocalChanges) {
+        const { releaseNumber } = d;
+
         const { itemURL } =
             (await getWaybackItemByReleaseNumber(releaseNumber)) || {};
 
@@ -180,8 +182,24 @@ const getPreviouseReleaseNumber = async (
     return previousItem?.releaseNum || null;
 };
 
+type LocalChangeResult = {
+    /**
+     * release number of the wayback item that contains local changes
+     */
+    releaseNumber: number;
+    /**
+     * inidcates the size of the tile image data associated with tilemap request
+     */
+    size: number;
+};
+
 /**
- * retrieving an array containing release numbers of World Imagery Wayback items that encompass local changes.
+ * Sends tilemap requests to identify World Imagery Wayback releases that contain local changes.
+ *
+ * Returns release numbers of wayback items with local changes for a specific tile (defined by column, row, and level),
+ * along with the size of the tile image data.
+ *
+ * Note: results may include duplicate release numbers with identical tile image data.
  *
  * @param column Column coordinate for the tile
  * @param row Row coordinate for the tile
@@ -189,7 +207,7 @@ const getPreviouseReleaseNumber = async (
  * @returns A Promise that resolves with an array containing release numbers associated with local changes
  *          found in World Imagery Wayback items.
  */
-const getReleaseNumOfWaybackItemsWithLocalChanges = async ({
+const getReleasesWithLocalChanges = async ({
     column,
     row,
     level,
@@ -197,11 +215,15 @@ const getReleaseNumOfWaybackItemsWithLocalChanges = async ({
     column: number;
     row: number;
     level: number;
-}): Promise<number[]> => {
+}): Promise<LocalChangeResult[]> => {
+    if (column === undefined || row === undefined || level === undefined) {
+        return [];
+    }
+
     const waybackItems = await getWaybackItems();
 
     return new Promise((resolve, reject) => {
-        const results: Array<number> = [];
+        const results: Array<LocalChangeResult> = [];
 
         // release number of the latest wayback item
         const mostRecentRelease = waybackItems[0].releaseNum;
@@ -239,7 +261,13 @@ const getReleaseNumOfWaybackItemsWithLocalChanges = async ({
 
                 // Checks for local changes and updates the results array accordingly
                 if (tilemapResponse.data[0]) {
-                    results.push(lastReleaseCameWithLocalChange);
+                    // size of the tile image data associated with the tilemap request
+                    const size = tilemapResponse.size[0] || 0;
+
+                    results.push({
+                        releaseNumber: lastReleaseCameWithLocalChange,
+                        size,
+                    });
                 }
 
                 // Obtains the release number to check for the previous wayback item
