@@ -347,6 +347,9 @@ export const removeDuplicates = async (
             prevWasAdded = false;
         }
     }
+    console.log(
+        `Fetching image data for ${candidatesToFetchImageData.length} candidates out of ${candidates.length} total candidates to check for duplicates.`
+    );
 
     // requests for fetching image data for the candidates that may have duplicates
     const imageDataRequests = candidatesToFetchImageData.map((candidate) => {
