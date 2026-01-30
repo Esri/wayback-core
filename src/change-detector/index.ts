@@ -372,7 +372,7 @@ export const removeDuplicates = async (
 
     try {
         // array to hold deduplicated candidates
-        const candidateDedupliced: LocalChangeCandidate[] = [];
+        const uniqueCandidates: LocalChangeCandidate[] = [];
 
         // fetch all image data for the candidates
         const imageDataResults = await Promise.all(imageDataRequests);
@@ -393,19 +393,19 @@ export const removeDuplicates = async (
 
             // get the last item from the deduplicated candidate list
             const lastKeptCandidate =
-                candidateDedupliced[candidateDedupliced.length - 1];
+                uniqueCandidates[uniqueCandidates.length - 1];
 
             // if there is no last item in the deduplicated list, push the current candidate
             // as it is the first item being processed
             if (!lastKeptCandidate) {
-                candidateDedupliced.push(currCandidate);
+                uniqueCandidates.push(currCandidate);
                 continue;
             }
 
             // if size of the current candidate is different from the previous candidate, keep it
             // as it is definitely a different image
             if (currCandidate.size !== lastKeptCandidate.size) {
-                candidateDedupliced.push(currCandidate);
+                uniqueCandidates.push(currCandidate);
                 continue;
             }
 
@@ -430,10 +430,10 @@ export const removeDuplicates = async (
                 continue;
             }
 
-            candidateDedupliced.push(currCandidate);
+            uniqueCandidates.push(currCandidate);
         }
 
-        return candidateDedupliced.map((d) => d.releaseNumber);
+        return uniqueCandidates.map((d) => d.releaseNumber);
     } catch (err) {
         // console.error('failed to fetch all image data uri', err);
 
