@@ -54,7 +54,7 @@ export const getMetadata = async (
     },
     zoom: number,
     releaseNumber: number
-): Promise<WaybackMetadata> => {
+): Promise<WaybackMetadata | null> => {
     if (!point || !zoom || !releaseNumber) {
         throw new Error(
             'Failed to query metadata because the required parameters are missing'
@@ -102,8 +102,8 @@ export const getMetadata = async (
         throw data.error;
     }
 
-    const feature: MetadataFeature =
-        data.features && data.features.length ? data.features[0] : null;
+    const feature: MetadataFeature | null =
+        data?.features && data?.features?.[0] ? data.features[0] : null;
 
     if (!feature) {
         return null;

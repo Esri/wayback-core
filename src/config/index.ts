@@ -28,10 +28,19 @@ type GetTileImageURLParams = {
      * The template should include placeholders for level, row, and column.
      * @example 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/10/{level}/{row}/{col}'
      */
-    urlTemplate: string;
-    column: number;
-    row: number;
-    level: number;
+    urlTemplate: string | null;
+    /**
+     * The column coordinate for the tile.
+     */
+    column: number | null;
+    /**
+     * The row coordinate for the tile.
+     */
+    row: number | null;
+    /**
+     * The level of detail (zoom level) for the tile.
+     */
+    level: number | null;
 };
 
 /**
@@ -148,6 +157,10 @@ export const getTileImageURL = ({
     row = null,
     level = null,
 }: GetTileImageURLParams): string => {
+    if (!urlTemplate || column === null || row === null || level === null) {
+        return '';
+    }
+
     const url = urlTemplate
         .replace('{level}', level.toString())
         .replace('{row}', row.toString())

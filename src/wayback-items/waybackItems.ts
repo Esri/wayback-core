@@ -21,19 +21,19 @@ import { WaybackConfig, WaybackItem } from '../types';
  * World Imagery Wayback configuration data, encompassing information
  * about all releases. It utilizes the release number as the primary key for retrieval.
  */
-let waybackconfig: WaybackConfig = null;
+let waybackconfigCached: WaybackConfig | null = null;
 
 /**
  * An array containing data related to all World Imagery Wayback releases.
  * This array is sorted in descending order based on the release date.
  */
-let waybackItems: WaybackItem[] = null;
+let waybackItemsCached: WaybackItem[] | null = null;
 
 /**
  * A Map that will be used to efficiently
  * retrieve wayback items by their release numbers.
  */
-let waybackItemByReleaseNumber: Map<number, WaybackItem> = null;
+let waybackItemByReleaseNumber: Map<number, WaybackItem> | null = null;
 
 /**
  * Get Wayback Configuration file that provides information about all World Imagery Wayback releases.
@@ -42,14 +42,14 @@ let waybackItemByReleaseNumber: Map<number, WaybackItem> = null;
  */
 export const getWaybackConfigData = async (): Promise<WaybackConfig> => {
     // If wayback configuration data is already fetched and cached, return it directly
-    if (waybackconfig) {
-        return waybackconfig;
+    if (waybackconfigCached) {
+        return waybackconfigCached;
     }
 
     // If custom wayback config data is set, use it directly
     if (customWaybackConfigData) {
-        waybackconfig = customWaybackConfigData;
-        return waybackconfig;
+        waybackconfigCached = customWaybackConfigData;
+        return waybackconfigCached;
     }
 
     const url = getWaybackConfigFileURL();
@@ -61,9 +61,9 @@ export const getWaybackConfigData = async (): Promise<WaybackConfig> => {
     }
 
     // Parse the fetched JSON response as WaybackConfig and cache it for subsequent calls
-    waybackconfig = (await res.json()) as WaybackConfig;
+    waybackconfigCached = (await res.json()) as WaybackConfig;
 
-    return waybackconfig;
+    return waybackconfigCached;
 };
 
 /**
@@ -95,18 +95,19 @@ export const isValidWaybackItem = (item: any): item is WaybackItem => {
  * @returns {Promise<WaybackItem[]>} A Promise resolving to an array of Wayback items.
  */
 export const getWaybackItems = async (): Promise<WaybackItem[]> => {
-    if (waybackItems) {
-        return waybackItems;
+    if (waybackItemsCached) {
+        return waybackItemsCached;
     }
 
+    // Fetch the Wayback Configuration data
     const waybackConfig = await getWaybackConfigData();
 
-    waybackItems = Object.keys(waybackConfig)
+    const waybackItems = Object.keys(waybackConfig)
         .filter((key) => !isNaN(+key)) // Filter out non-numeric keys
         .map((key: string) => {
             const releaseNum: number = +key;
 
-            const waybackconfigItem = waybackconfig[releaseNum];
+            const waybackconfigItem = waybackConfig[releaseNum];
 
             // If the release number does not exist in the configuration or the item is invalid, skip it
             if (!isValidWaybackItem(waybackconfigItem)) {
@@ -126,23 +127,23 @@ export const getWaybackItems = async (): Promise<WaybackItem[]> => {
             }
 
             const waybackItem: WaybackItem = {
+                ...waybackconfigItem,
                 releaseNum,
                 releaseDateLabel,
                 releaseDatetime,
-                ...waybackconfigItem,
             };
 
             return waybackItem;
         });
 
     // Remove null entries and sort the Wayback items by releaseDatetime (descending order)
-    waybackItems = waybackItems
+    waybackItemsCached = waybackItems
         .filter((item: WaybackItem | null) => item !== null)
         .sort((a, b) => {
             return b.releaseDatetime - a.releaseDatetime;
         });
 
-    return waybackItems;
+    return waybackItemsCached;
 };
 
 /**

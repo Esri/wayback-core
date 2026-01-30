@@ -58,7 +58,7 @@ type IResponseWaybackTilemap = {
  * of the preceding wayback release in the array. This index reference is crucial for
  * identifying the wayback item that precedes a given one.
  */
-let wabackItemsIndicemMap: Map<number, number> = null;
+let wabackItemsIndicemMap: Map<number, number> | null = null;
 
 /**
  * Retrieves a list of world imagery wayback releases with local changes for a specified geographic point at a given zoom level.
@@ -95,7 +95,13 @@ export const getWaybackItemsWithLocalChanges = async (
     const candidates: Candidate[] = [];
 
     for (const releaseNumber of releaseNums) {
-        const { itemURL } = await getWaybackItemByReleaseNumber(releaseNumber);
+        const { itemURL } =
+            (await getWaybackItemByReleaseNumber(releaseNumber)) || {};
+
+        // If itemURL is not available, skip this release number
+        if (!itemURL) {
+            continue;
+        }
 
         const candidate: Candidate = {
             releaseNumber,
@@ -119,7 +125,9 @@ export const getWaybackItemsWithLocalChanges = async (
 
     for (const releaseNumber of rNumsNoDuplicates) {
         const waybackItem = await getWaybackItemByReleaseNumber(releaseNumber);
-        output.push(waybackItem);
+        if (waybackItem) {
+            output.push(waybackItem);
+        }
     }
 
     if (abortController?.signal.aborted) {
@@ -131,24 +139,6 @@ export const getWaybackItemsWithLocalChanges = async (
     return output;
 };
 
-// const getTileImageUrl = (
-//     urlTemplate: string,
-//     {
-//         column = null,
-//         row = null,
-//         level = null,
-//     }: {
-//         column: number;
-//         row: number;
-//         level: number;
-//     }
-// ): string => {
-//     return urlTemplate
-//         .replace('{level}', level.toString())
-//         .replace('{row}', row.toString())
-//         .replace('{col}', column.toString());
-// };
-
 /**
  * Determine the release number of the wayback item that precedes a given input release number
  * in a sequence of World Imagery Wayback releases.
@@ -159,21 +149,27 @@ export const getWaybackItemsWithLocalChanges = async (
  */
 const getPreviouseReleaseNumber = async (
     releaseNumber: number
-): Promise<number> => {
+): Promise<number | null> => {
     // Retrieves an array of data for all World Imagery Wayback releases sorted by release date in descending order
     const waybackItems = await getWaybackItems();
 
     // Initialize and populate the `wabackItemsIndicemMap` if it's currently empty
     if (!wabackItemsIndicemMap) {
-        wabackItemsIndicemMap = new Map();
+        const map = new Map<number, number>();
 
-        waybackItems.forEach((item, index) => {
-            wabackItemsIndicemMap.set(item.releaseNum, index);
-        });
+        for (const [index, item] of waybackItems.entries()) {
+            map.set(item.releaseNum, index);
+        }
+
+        wabackItemsIndicemMap = map;
     }
 
     // Obtain the index of the wayback item by its release number from the previously populated map
     const indexOfWaybackItem = wabackItemsIndicemMap.get(releaseNumber);
+
+    if (indexOfWaybackItem === undefined) {
+        return null;
+    }
 
     // Determine the wayback item preceding the input release number, if available
     const previousItem = waybackItems[indexOfWaybackItem + 1]
@@ -194,9 +190,9 @@ const getPreviouseReleaseNumber = async (
  *          found in World Imagery Wayback items.
  */
 const getReleaseNumOfWaybackItemsWithLocalChanges = async ({
-    column = null,
-    row = null,
-    level = null,
+    column,
+    row,
+    level,
 }: {
     column: number;
     row: number;

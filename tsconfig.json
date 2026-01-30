@@ -6,7 +6,8 @@
         // Modern browsers support all ES6 features, so ES6 is a good choice. 
         "target": "es6",
         "esModuleInterop": true,
-        "sourceMap": true
+        "sourceMap": true,
+        "strict": true
     },
     "include": ["src/**/*"],
     "exclude": [
