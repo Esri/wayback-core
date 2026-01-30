@@ -14,6 +14,17 @@
  */
 
 export const areUint8ArraysEqual = (arr1: Uint8Array, arr2: Uint8Array) => {
+    // handle null or undefined arrays
+    if (!arr1 || !arr2) {
+        return false;
+    }
+
+    // check type of both inputs
+    if (!(arr1 instanceof Uint8Array) || !(arr2 instanceof Uint8Array)) {
+        return false;
+    }
+
+    // if lengths are different, arrays are not equal
     if (arr1.length !== arr2.length) {
         return false;
     }

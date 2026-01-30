@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { release } from 'os';
 import { getTileImageURL, getWaybackServiceBaseURL } from '../config';
 import { lat2tile, long2tile } from '../helpers/geometry';
 import { areUint8ArraysEqual } from '../helpers/unit8array';
@@ -326,37 +327,81 @@ export const removeDuplicates = async (
         return candidates.map((c) => c.releaseNumber);
     }
 
-    // reverse the candidates list so the wayback items will be sorted by release dates in ascending order (oldest >>> latest)
-    const imageDataRequests = candidates.reverse().map((candidate) => {
+    // requests for fetching image data for each candidate
+    const imageDataRequests = candidates.map((candidate) => {
         return getImageData(candidate.url, candidate.releaseNumber);
     });
 
-    // array of uniqeu image data with duplicated items removed
-    const uniqueImageData: IResponseGetImageData[] = [];
-
     try {
+        // array to hold deduplicated candidates
+        const candidateDedupliced: LocalChangeCandidate[] = [];
+
+        // fetch all image data for the candidates
         const imageDataResults = await Promise.all(imageDataRequests);
 
-        for (const currentItem of imageDataResults) {
-            const previousItem = uniqueImageData[uniqueImageData.length - 1];
+        // map to hold image data results by release number
+        const imageDataByReleaseNumber = new Map<number, Uint8Array>();
 
-            // image data of the currentItem is identical to the image data of the previous item,
-            // skip pushing current data to the uniqueImageData list
-            if (
-                previousItem &&
-                areUint8ArraysEqual(previousItem.data, currentItem.data)
-            ) {
+        // map image data results by release number for quick access
+        for (const result of imageDataResults) {
+            imageDataByReleaseNumber.set(result.releaseNumber, result.data);
+        }
+
+        // Iterate in reverse order (oldest to newest release) so that when consecutive
+        // duplicates are found, the older release is preserved and newer duplicates are skipped
+        for (let i = candidates.length - 1; i >= 0; i--) {
+            // current candidate being processed
+            const currCandidate = candidates[i];
+
+            // get the last item from the deduplicated candidate list
+            const lastKeptCandidate =
+                candidateDedupliced[candidateDedupliced.length - 1];
+
+            // if there is no last item in the deduplicated list, push the current candidate
+            // as it is the first item being processed
+            if (!lastKeptCandidate) {
+                candidateDedupliced.push(currCandidate);
                 continue;
             }
 
-            uniqueImageData.push(currentItem);
-        }
-    } catch (err) {
-        console.error('failed to fetch all image data uri', err);
-    }
+            // if size of the current candidate is different from the previous candidate, keep it
+            // as it is definitely a different image
+            if (currCandidate.size !== lastKeptCandidate.size) {
+                candidateDedupliced.push(currCandidate);
+                continue;
+            }
 
-    // return release number of the items in the uniqueImageData array
-    return uniqueImageData.map((d) => d.releaseNumber);
+            const currImageData = imageDataByReleaseNumber.get(
+                currCandidate.releaseNumber
+            );
+
+            const prevImageData = imageDataByReleaseNumber.get(
+                lastKeptCandidate?.releaseNumber || -1
+            );
+
+            // compare current image data with the previous one in the deduplicated list
+            // if they are identical, skip the current candidate as it is a duplicate
+            if (
+                prevImageData &&
+                currImageData &&
+                areUint8ArraysEqual(prevImageData, currImageData)
+            ) {
+                // console.log(
+                //     `Skipping duplicate image data for release number: ${currCandidate.releaseNumber}`
+                // );
+                continue;
+            }
+
+            candidateDedupliced.push(currCandidate);
+        }
+
+        return candidateDedupliced.map((d) => d.releaseNumber);
+    } catch (err) {
+        // console.error('failed to fetch all image data uri', err);
+
+        // in case of error, return all release numbers without removing duplicates
+        return candidates.map((c) => c.releaseNumber);
+    }
 };
 
 const getImageData = async (
@@ -377,7 +422,11 @@ const getImageData = async (
                     data,
                 });
             } else {
-                reject();
+                // reject();
+                resolve({
+                    releaseNumber,
+                    data: new Uint8Array(),
+                });
             }
         };
 

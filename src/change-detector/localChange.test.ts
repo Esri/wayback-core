@@ -162,10 +162,36 @@ describe('removeDuplicates', () => {
             // Both should be returned since image data is different
             expect(result).toEqual([101, 100]);
         });
+
+        it('should keep candidates with different sizes without comparing image data', async () => {
+            // Even with identical image data, different sizes should keep both candidates
+            const sameImageData = new Uint8Array([1, 2, 3, 4]);
+
+            mockImageDataMap.set('http://example.com/tile1', sameImageData);
+            mockImageDataMap.set('http://example.com/tile2', sameImageData);
+
+            const candidates = [
+                {
+                    releaseNumber: 100,
+                    size: 1024,
+                    url: 'http://example.com/tile1',
+                },
+                {
+                    releaseNumber: 101,
+                    size: 2048, // Different size
+                    url: 'http://example.com/tile2',
+                },
+            ];
+
+            const result = await removeDuplicates(candidates, 12);
+
+            // Both should be returned since sizes are different
+            expect(result).toEqual([101, 100]);
+        });
     });
 
     describe('duplicate removal', () => {
-        it('should remove candidates with identical image data', async () => {
+        it('should remove consecutive candidates with identical image data', async () => {
             const identicalImageData = new Uint8Array([1, 2, 3, 4, 5]);
             const differentImageData = new Uint8Array([10, 20, 30, 40, 50]);
 
@@ -202,10 +228,10 @@ describe('removeDuplicates', () => {
 
             const result = await removeDuplicates(candidates, 15);
 
-            // Note: candidates are reversed, so processing order is [102, 101, 100]
+            // Processing order (reversed): [102, 101, 100]
             // 102 (differentImageData) - kept (first item)
-            // 101 (identicalImageData) - kept (different from 102)
-            // 100 (identicalImageData) - skipped (same as 101)
+            // 101 (identicalImageData) - kept (different from 102's image data)
+            // 100 (identicalImageData) - skipped (same as 101's image data)
             expect(result).toEqual([102, 101]);
         });
 
@@ -320,22 +346,21 @@ describe('removeDuplicates', () => {
         });
     });
 
-    describe('error handling', () => {
-        it('should return empty array when image fetch fails', async () => {
-            // const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
-            // Override XMLHttpRequest to simulate failure
-            // @ts-ignore
+    describe('failed image fetch handling', () => {
+        it('should treat failed image fetches as duplicates since they return empty Uint8Array', async () => {
+            // Override XMLHttpRequest to simulate failure (returns empty Uint8Array)
+            // @ts-expect-error - Mocking XMLHttpRequest
             global.XMLHttpRequest = jest.fn(() => ({
                 open: jest.fn(),
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 send: jest.fn(function (this: any) {
                     this.status = 404;
                     if (this.onload) {
-                        this.onload.call(this);
+                        this.onload();
                     }
                 }),
                 responseType: '',
-            })) as any;
+            }));
 
             const candidates = [
                 {
@@ -352,9 +377,97 @@ describe('removeDuplicates', () => {
 
             const result = await removeDuplicates(candidates, 12);
 
-            expect(result).toEqual([]);
-            // expect(consoleSpy).toHaveBeenCalled();
-            // consoleSpy.mockRestore();
+            // Both return empty Uint8Array, so they are considered duplicates
+            // Processing in reverse: 101 kept, 100 skipped as duplicate
+            expect(result).toEqual([101]);
+        });
+
+        it('should keep candidates with different sizes even when image fetch fails', async () => {
+            // Override XMLHttpRequest to simulate failure
+            // @ts-expect-error - Mocking XMLHttpRequest
+            global.XMLHttpRequest = jest.fn(() => ({
+                open: jest.fn(),
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                send: jest.fn(function (this: any) {
+                    this.status = 500;
+                    if (this.onload) {
+                        this.onload();
+                    }
+                }),
+                responseType: '',
+            }));
+
+            const candidates = [
+                {
+                    releaseNumber: 100,
+                    size: 1024,
+                    url: 'http://example.com/tile1',
+                },
+                {
+                    releaseNumber: 101,
+                    size: 2048, // Different size
+                    url: 'http://example.com/tile2',
+                },
+            ];
+
+            const result = await removeDuplicates(candidates, 12);
+
+            // Different sizes mean they are kept regardless of image data comparison
+            expect(result).toEqual([101, 100]);
+        });
+
+        it('should handle mix of successful and failed image fetches', async () => {
+            const validImageData = new Uint8Array([1, 2, 3, 4]);
+
+            // Set up mock for one successful URL
+            mockImageDataMap.set('http://example.com/tile1', validImageData);
+            // tile2 will fail (not in mockImageDataMap)
+
+            // Restore default XMLHttpRequest mock that handles both success and failure
+            // @ts-expect-error - Mocking XMLHttpRequest
+            global.XMLHttpRequest = jest.fn(() => ({
+                open: jest.fn((method: string, url: string) => {
+                    mockXHR.open(method, url);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    (mockXHR as any).currentUrl = url;
+                }),
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                send: jest.fn(function (this: any) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const url = (mockXHR as any).currentUrl;
+                    const imageData = url
+                        ? mockImageDataMap.get(url)
+                        : undefined;
+                    if (imageData) {
+                        this.status = 200;
+                        this.response = imageData.buffer;
+                    } else {
+                        this.status = 404;
+                    }
+                    if (this.onload) {
+                        this.onload();
+                    }
+                }),
+                responseType: '',
+            }));
+
+            const candidates = [
+                {
+                    releaseNumber: 100,
+                    size: 1024,
+                    url: 'http://example.com/tile1', // Will succeed
+                },
+                {
+                    releaseNumber: 101,
+                    size: 1024,
+                    url: 'http://example.com/tile2', // Will fail, returns empty array
+                },
+            ];
+
+            const result = await removeDuplicates(candidates, 12);
+
+            // Processing in reverse: 101 (empty) kept first, 100 (valid data) is different, so kept
+            expect(result).toEqual([101, 100]);
         });
     });
 });
