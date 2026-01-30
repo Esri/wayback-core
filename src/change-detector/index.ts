@@ -48,6 +48,7 @@ type IResponseWaybackTilemap = {
         width: number;
         height: number;
     };
+    size: number[];
 };
 
 /**
@@ -111,7 +112,7 @@ export const getWaybackItemsWithLocalChanges = async (
     // console.log(candidates)
 
     // Removes release with duplicate tile image data and extracts unique release numbers
-    const rNumsNoDuplicates = await removeDuplicates(candidates);
+    const rNumsNoDuplicates = await removeDuplicates(candidates, level);
     // console.log(rNumsNoDuplicates)
 
     const output: WaybackItem[] = [];
@@ -121,16 +122,13 @@ export const getWaybackItemsWithLocalChanges = async (
         output.push(waybackItem);
     }
 
-    return new Promise((resolve, reject) => {
-        if (abortController && abortController?.signal.aborted) {
-            reject(
-                'Task aborterd: getWaybackItemsWithLocalChanges has been aborterd by the user.'
-            );
-            return;
-        }
+    if (abortController?.signal.aborted) {
+        throw new Error(
+            'Task aborted: getWaybackItemsWithLocalChanges has been aborted by the user.'
+        );
+    }
 
-        resolve(output);
-    });
+    return output;
 };
 
 // const getTileImageUrl = (
@@ -276,15 +274,28 @@ const getReleaseNumOfWaybackItemsWithLocalChanges = async ({
  * to extract unique release numbers associated with image data URLs. It eliminates duplicate image data
  * and returns an array of unique release numbers.
  *
- * @param candidates (Optional) An array of Candidate objects containing URL and releaseNumber information
+ * @param candidates An array of Candidate objects containing URL and releaseNumber information
+ * @param zoomLevel The zoom level used to determine whether to skip duplicate removal process
  * @returns A Promise that resolves with an array of unique release numbers extracted from the provided Candidates
  *          If the input array is empty or encounters an error during processing, it returns an empty array.
  */
 const removeDuplicates = async (
-    candidates?: Array<Candidate>
+    candidates: Array<Candidate>,
+    zoomLevel: number
 ): Promise<Array<number>> => {
-    if (!candidates.length) {
+    if (!candidates || !candidates.length) {
         return [];
+    }
+
+    // for zoom levels 11 and below, we skip duplicate removal process
+    // as tile images at these zoom levels have less updates and changes over time
+    // thus are less likely to have duplicate images
+    if (zoomLevel <= 11) {
+        console.log(
+            'Skipping duplicate removal process for zoom level',
+            zoomLevel
+        );
+        return candidates.map((c) => c.releaseNumber);
     }
 
     // reverse the candidates list so the wayback items will be sorted by release dates in ascending order (oldest >>> latest)
