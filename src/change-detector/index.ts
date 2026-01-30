@@ -22,11 +22,15 @@ import {
     getWaybackItems,
 } from '../wayback-items/waybackItems';
 
-type Candidate = {
+type LocalChangeCandidate = {
     /**
      * release number of a wayback item
      */
     releaseNumber: number;
+    /**
+     * size of the tile image data associated with this wayback release
+     */
+    size: number;
     /**
      * url of a tile image from this wayback release
      */
@@ -92,10 +96,10 @@ export const getWaybackItemsWithLocalChanges = async (
     });
 
     // Constructs Candidate objects with release numbers and corresponding image URLs
-    const candidates: Candidate[] = [];
+    const candidates: LocalChangeCandidate[] = [];
 
     for (const d of releaseWithLocalChanges) {
-        const { releaseNumber } = d;
+        const { releaseNumber, size } = d;
 
         const { itemURL } =
             (await getWaybackItemByReleaseNumber(releaseNumber)) || {};
@@ -105,8 +109,9 @@ export const getWaybackItemsWithLocalChanges = async (
             continue;
         }
 
-        const candidate: Candidate = {
+        const candidate: LocalChangeCandidate = {
             releaseNumber,
+            size,
             url: getTileImageURL({
                 urlTemplate: itemURL,
                 column,
@@ -182,17 +187,6 @@ const getPreviouseReleaseNumber = async (
     return previousItem?.releaseNum || null;
 };
 
-type LocalChangeResult = {
-    /**
-     * release number of the wayback item that contains local changes
-     */
-    releaseNumber: number;
-    /**
-     * inidcates the size of the tile image data associated with tilemap request
-     */
-    size: number;
-};
-
 /**
  * Sends tilemap requests to identify World Imagery Wayback releases that contain local changes.
  *
@@ -215,7 +209,7 @@ const getReleasesWithLocalChanges = async ({
     column: number;
     row: number;
     level: number;
-}): Promise<LocalChangeResult[]> => {
+}): Promise<LocalChangeCandidate[]> => {
     if (column === undefined || row === undefined || level === undefined) {
         return [];
     }
@@ -223,7 +217,7 @@ const getReleasesWithLocalChanges = async ({
     const waybackItems = await getWaybackItems();
 
     return new Promise((resolve, reject) => {
-        const results: Array<LocalChangeResult> = [];
+        const results: Array<LocalChangeCandidate> = [];
 
         // release number of the latest wayback item
         const mostRecentRelease = waybackItems[0].releaseNum;
@@ -271,6 +265,7 @@ const getReleasesWithLocalChanges = async ({
                     results.push({
                         releaseNumber: lastReleaseCameWithLocalChange,
                         size,
+                        url: '', // url will be populated later
                     });
                 }
 
@@ -308,7 +303,7 @@ const getReleasesWithLocalChanges = async ({
  *          If the input array is empty or encounters an error during processing, it returns an empty array.
  */
 const removeDuplicates = async (
-    candidates: Array<Candidate>,
+    candidates: Array<LocalChangeCandidate>,
     zoomLevel: number
 ): Promise<Array<number>> => {
     if (!candidates || !candidates.length) {
