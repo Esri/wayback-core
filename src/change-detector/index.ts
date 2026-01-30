@@ -327,8 +327,29 @@ export const removeDuplicates = async (
         return candidates.map((c) => c.releaseNumber);
     }
 
-    // requests for fetching image data for each candidate
-    const imageDataRequests = candidates.map((candidate) => {
+    // array to hold candidates that may have duplicate image data
+    const candidatesToFetchImageData: LocalChangeCandidate[] = [];
+    let prevWasAdded = false;
+
+    for (let i = 0; i < candidates.length; i++) {
+        const currCandidate = candidates[i];
+        const prevCandidate = candidates[i - 1];
+
+        if (prevCandidate && currCandidate.size === prevCandidate.size) {
+            // Add previous candidate if not already added
+            if (!prevWasAdded) {
+                candidatesToFetchImageData.push(prevCandidate);
+            }
+            // Add current candidate
+            candidatesToFetchImageData.push(currCandidate);
+            prevWasAdded = true;
+        } else {
+            prevWasAdded = false;
+        }
+    }
+
+    // requests for fetching image data for the candidates that may have duplicates
+    const imageDataRequests = candidatesToFetchImageData.map((candidate) => {
         return getImageData(candidate.url, candidate.releaseNumber);
     });
 
