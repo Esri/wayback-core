@@ -302,12 +302,17 @@ const getReleasesWithLocalChanges = async ({
  * @returns A Promise that resolves with an array of unique release numbers extracted from the provided Candidates
  *          If the input array is empty or encounters an error during processing, it returns an empty array.
  */
-const removeDuplicates = async (
+export const removeDuplicates = async (
     candidates: Array<LocalChangeCandidate>,
     zoomLevel: number
 ): Promise<Array<number>> => {
     if (!candidates || !candidates.length) {
         return [];
+    }
+
+    // if there's only one candidate, no need to process further
+    if (candidates.length === 1) {
+        return candidates.map((c) => c.releaseNumber);
     }
 
     // for zoom levels 11 and below, we skip duplicate removal process
