@@ -66,28 +66,27 @@ export const getImageData = async (
     imageUrl: string,
     releaseNumber: number
 ): Promise<IResponseGetImageData> => {
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', imageUrl, true);
-        xhr.responseType = 'arraybuffer';
+    try {
+        const response = await fetch(imageUrl);
 
-        xhr.onload = function () {
-            if (this.status == 200) {
-                const data = new Uint8Array(this.response);
+        if (!response.ok) {
+            return {
+                releaseNumber,
+                data: new Uint8Array(),
+            };
+        }
 
-                resolve({
-                    releaseNumber,
-                    data,
-                });
-            } else {
-                // reject();
-                resolve({
-                    releaseNumber,
-                    data: new Uint8Array(),
-                });
-            }
+        const arrayBuffer = await response.arrayBuffer();
+        const data = new Uint8Array(arrayBuffer);
+
+        return {
+            releaseNumber,
+            data,
         };
-
-        xhr.send();
-    });
+    } catch {
+        return {
+            releaseNumber,
+            data: new Uint8Array(),
+        };
+    }
 };

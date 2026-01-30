@@ -15,44 +15,36 @@
 
 import { removeDuplicates } from './index';
 
-// Mock XMLHttpRequest for getImageData function
-const mockXHR = {
-    open: jest.fn(),
-    send: jest.fn(),
-    responseType: '',
-    onload: null as (() => void) | null,
-    status: 200,
-    response: null as ArrayBuffer | null,
-};
-
 // Store image data for mock responses
 const mockImageDataMap: Map<string, Uint8Array> = new Map();
 
+// Store status codes for specific URLs (for simulating failures)
+const mockStatusMap: Map<string, number> = new Map();
+
 beforeAll(() => {
-    // @ts-ignore - Mocking XMLHttpRequest
-    global.XMLHttpRequest = jest.fn(() => ({
-        ...mockXHR,
-        open: jest.fn((method: string, url: string) => {
-            // Store the URL for later use in onload
-            mockXHR.open(method, url);
-            (mockXHR as any).currentUrl = url;
-        }),
-        send: jest.fn(function (this: any) {
-            const url = (mockXHR as any).currentUrl;
-            const imageData = mockImageDataMap.get(url);
-            if (imageData) {
-                this.status = 200;
-                this.response = imageData.buffer;
-                if (this.onload) {
-                    this.onload.call(this);
-                }
-            }
-        }),
-    })) as any;
+    global.fetch = jest.fn((url: string) => {
+        const imageData = mockImageDataMap.get(url);
+        const status = mockStatusMap.get(url) ?? (imageData ? 200 : 404);
+
+        if (status >= 200 && status < 300 && imageData) {
+            return Promise.resolve({
+                ok: true,
+                status,
+                arrayBuffer: () => Promise.resolve(imageData.buffer),
+            } as Response);
+        }
+
+        return Promise.resolve({
+            ok: false,
+            status,
+            arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+        } as Response);
+    }) as jest.Mock;
 });
 
 afterEach(() => {
     mockImageDataMap.clear();
+    mockStatusMap.clear();
     jest.clearAllMocks();
 });
 
@@ -348,19 +340,9 @@ describe('removeDuplicates', () => {
 
     describe('failed image fetch handling', () => {
         it('should treat failed image fetches as duplicates since they return empty Uint8Array', async () => {
-            // Override XMLHttpRequest to simulate failure (returns empty Uint8Array)
-            // @ts-expect-error - Mocking XMLHttpRequest
-            global.XMLHttpRequest = jest.fn(() => ({
-                open: jest.fn(),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                send: jest.fn(function (this: any) {
-                    this.status = 404;
-                    if (this.onload) {
-                        this.onload();
-                    }
-                }),
-                responseType: '',
-            }));
+            // Set up failed responses for both URLs
+            mockStatusMap.set('http://example.com/tile1', 404);
+            mockStatusMap.set('http://example.com/tile2', 404);
 
             const candidates = [
                 {
@@ -383,19 +365,9 @@ describe('removeDuplicates', () => {
         });
 
         it('should keep candidates with different sizes even when image fetch fails', async () => {
-            // Override XMLHttpRequest to simulate failure
-            // @ts-expect-error - Mocking XMLHttpRequest
-            global.XMLHttpRequest = jest.fn(() => ({
-                open: jest.fn(),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                send: jest.fn(function (this: any) {
-                    this.status = 500;
-                    if (this.onload) {
-                        this.onload();
-                    }
-                }),
-                responseType: '',
-            }));
+            // Set up failed responses for both URLs
+            mockStatusMap.set('http://example.com/tile1', 500);
+            mockStatusMap.set('http://example.com/tile2', 500);
 
             const candidates = [
                 {
@@ -419,37 +391,8 @@ describe('removeDuplicates', () => {
         it('should handle mix of successful and failed image fetches', async () => {
             const validImageData = new Uint8Array([1, 2, 3, 4]);
 
-            // Set up mock for one successful URL
+            // Set up mock for one successful URL, tile2 will fail (not in mockImageDataMap)
             mockImageDataMap.set('http://example.com/tile1', validImageData);
-            // tile2 will fail (not in mockImageDataMap)
-
-            // Restore default XMLHttpRequest mock that handles both success and failure
-            // @ts-expect-error - Mocking XMLHttpRequest
-            global.XMLHttpRequest = jest.fn(() => ({
-                open: jest.fn((method: string, url: string) => {
-                    mockXHR.open(method, url);
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (mockXHR as any).currentUrl = url;
-                }),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                send: jest.fn(function (this: any) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const url = (mockXHR as any).currentUrl;
-                    const imageData = url
-                        ? mockImageDataMap.get(url)
-                        : undefined;
-                    if (imageData) {
-                        this.status = 200;
-                        this.response = imageData.buffer;
-                    } else {
-                        this.status = 404;
-                    }
-                    if (this.onload) {
-                        this.onload();
-                    }
-                }),
-                responseType: '',
-            }));
 
             const candidates = [
                 {
