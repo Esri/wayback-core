@@ -168,7 +168,7 @@ export const getWaybackItemsWithLocalChanges = async (
  * @returns A Promise that resolves with an array containing release numbers associated with local changes
  *          found in World Imagery Wayback items.
  */
-const getReleasesWithLocalChanges = async ({
+export const getReleasesWithLocalChanges = async ({
     column,
     row,
     level,
