@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { getWaybackItemsWithLocalChanges } from './change-detector';
+import { getWaybackItemsWithLocalChanges } from './change-detector/changeDetector';
 import { getMetadata } from './metadata';
 import { getWaybackItems } from './wayback-items/waybackItems';
 import { WaybackItem, WaybackMetadata, WaybackConfig } from './types';

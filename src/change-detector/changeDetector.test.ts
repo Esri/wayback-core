@@ -13,7 +13,10 @@
  * limitations under the License.
  */
 
-import { removeDuplicates, getReleasesWithLocalChanges } from './index';
+import {
+    removeDuplicates,
+    getReleasesWithLocalChanges,
+} from './changeDetector';
 import { getWaybackItems } from '../wayback-items/waybackItems';
 import {
     getPreviouseReleaseNumber,

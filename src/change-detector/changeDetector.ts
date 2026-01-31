@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { release } from 'os';
 import { getTileImageURL, getWaybackServiceBaseURL } from '../config';
 import { lat2tile, long2tile } from '../helpers/geometry';
 import { areUint8ArraysEqual } from '../helpers/unit8array';
