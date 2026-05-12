@@ -84,8 +84,8 @@ export const getWaybackItemsWithLocalChanges = async (
         longitude: number;
     },
     zoom: number,
-    abortController?: AbortController,
-    shouldNotUseSizeToFilterDuplicates?: boolean
+    abortController?: AbortController
+    // shouldNotUseSizeToFilterDuplicates?: boolean
 ): Promise<WaybackItem[]> => {
     const { longitude, latitude } = point;
 
@@ -129,11 +129,14 @@ export const getWaybackItemsWithLocalChanges = async (
     // console.log(candidates)
 
     // Removes release with duplicate tile image data and extracts unique release numbers
-    const rNumsNoDuplicates =
-        shouldNotUseSizeToFilterDuplicates === false
-            ? await removeDuplicates(candidates, level)
-            : await removeDuplicates_TO_BE_REMOVED_SOON(candidates);
-    // console.log(rNumsNoDuplicates)
+    // const rNumsNoDuplicates =
+    //     shouldNotUseSizeToFilterDuplicates === false
+    //         ? await removeDuplicates(candidates, level)
+    //         : await removeDuplicates_TO_BE_REMOVED_SOON(candidates);
+    // // console.log(rNumsNoDuplicates)
+
+    // Removes release with duplicate tile image data and extracts unique release numbers
+    const rNumsNoDuplicates = await removeDuplicates(candidates, level);
 
     const output: WaybackItem[] = [];
 
@@ -258,53 +261,53 @@ export const getReleasesWithLocalChanges = async ({
     });
 };
 
-/**
- * Original version of removeDuplicates function that does not use size to pre-filter candidates.
- * This function is kept for comparison purposes.
- * Wiill be removed in future versions.
- *
- * @param candidates An array of Candidate objects containing URL and releaseNumber information
- * @returns A Promise that resolves with an array of unique release numbers extracted from the provided Candidate
- */
-const removeDuplicates_TO_BE_REMOVED_SOON = async (
-    candidates?: Array<LocalChangeCandidate>
-): Promise<Array<number>> => {
-    if (!candidates || !candidates.length) {
-        return [];
-    }
+// /**
+//  * Original version of removeDuplicates function that does not use size to pre-filter candidates.
+//  * This function is kept for comparison purposes.
+//  * Wiill be removed in future versions.
+//  *
+//  * @param candidates An array of Candidate objects containing URL and releaseNumber information
+//  * @returns A Promise that resolves with an array of unique release numbers extracted from the provided Candidate
+//  */
+// const removeDuplicates_TO_BE_REMOVED_SOON = async (
+//     candidates?: Array<LocalChangeCandidate>
+// ): Promise<Array<number>> => {
+//     if (!candidates || !candidates.length) {
+//         return [];
+//     }
 
-    // reverse the candidates list so the wayback items will be sorted by release dates in ascending order (oldest >>> latest)
-    const imageDataRequests = candidates.reverse().map((candidate) => {
-        return getImageData(candidate.url, candidate.releaseNumber);
-    });
+//     // reverse the candidates list so the wayback items will be sorted by release dates in ascending order (oldest >>> latest)
+//     const imageDataRequests = candidates.reverse().map((candidate) => {
+//         return getImageData(candidate.url, candidate.releaseNumber);
+//     });
 
-    // array of uniqeu image data with duplicated items removed
-    const uniqueImageData: IResponseGetImageData[] = [];
+//     // array of uniqeu image data with duplicated items removed
+//     const uniqueImageData: IResponseGetImageData[] = [];
 
-    try {
-        const imageDataResults = await Promise.all(imageDataRequests);
+//     try {
+//         const imageDataResults = await Promise.all(imageDataRequests);
 
-        for (const currentItem of imageDataResults) {
-            const previousItem = uniqueImageData[uniqueImageData.length - 1];
+//         for (const currentItem of imageDataResults) {
+//             const previousItem = uniqueImageData[uniqueImageData.length - 1];
 
-            // image data of the currentItem is identical to the image data of the previous item,
-            // skip pushing current data to the uniqueImageData list
-            if (
-                previousItem &&
-                areUint8ArraysEqual(previousItem.data, currentItem.data)
-            ) {
-                continue;
-            }
+//             // image data of the currentItem is identical to the image data of the previous item,
+//             // skip pushing current data to the uniqueImageData list
+//             if (
+//                 previousItem &&
+//                 areUint8ArraysEqual(previousItem.data, currentItem.data)
+//             ) {
+//                 continue;
+//             }
 
-            uniqueImageData.push(currentItem);
-        }
-    } catch (err) {
-        console.error('failed to fetch all image data uri', err);
-    }
+//             uniqueImageData.push(currentItem);
+//         }
+//     } catch (err) {
+//         console.error('failed to fetch all image data uri', err);
+//     }
 
-    // return release number of the items in the uniqueImageData array
-    return uniqueImageData.map((d) => d.releaseNumber);
-};
+//     // return release number of the items in the uniqueImageData array
+//     return uniqueImageData.map((d) => d.releaseNumber);
+// };
 
 /**
  * Asynchronous function removeDuplicates is responsible for processing an array of Candidate objects
