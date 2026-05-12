@@ -10,7 +10,7 @@
   "scripts": {
     "test": "jest ./src --config jest.config.js --bail --findRelatedTests --passWithNoTests",
     "clean": "rimraf dist",
-    "build": "npm run clean && tsc",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
     "lint": "eslint src --ext .tsx,.ts --cache --fix",
     "prepare": "husky install && npm run build",
     "prepublishOnly": "npm run test && npm run lint",

@@ -1,0 +1,22 @@
+
+{
+    /**
+     * This tsconfig is used for building the project and is extended by the main tsconfig.json.
+     * It excludes test files and drops "jest" types to prevent them from leaking into the compiled output.
+     */
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        // Drop "jest" types so jest globals don't leak into the compiled output
+        "types": ["node"]
+    },
+    /**
+    * Exclude test files from the build since they are not needed in dist/ and can cause
+    * issues if they reference devDependencies that aren't included in the final package.
+    */
+    "exclude": [
+        "node_modules",
+        "**/*.spec.ts",
+        "**/*.test.ts",
+        "src/__tests__"
+    ]
+}

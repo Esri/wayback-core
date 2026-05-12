@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- add `tsconfig.build.json` for optimized build configuration, separating it from development settings.
+
 ### Changed
 - update `getWaybackItemsWithLocalChanges` to skip duplicate wayback items based on zoom level.
-- update tsconfig to enable strict mode and improve type safety across the codebase
+- update `getWaybackItemsWithLocalChanges` for improved performance by reducing redundant wayback tile retrievals during deduplication.
+- update `tsconfig.json` to include `jest` types for better test type checking.
+- update `tsconfig.json` to enable strict mode and improve type safety across the codebase
 
 ## 2025-10-03
 
