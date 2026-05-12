@@ -136,7 +136,11 @@ export const getWaybackItemsWithLocalChanges = async (
     // // console.log(rNumsNoDuplicates)
 
     // Removes release with duplicate tile image data and extracts unique release numbers
-    const rNumsNoDuplicates = await removeDuplicates(candidates, level);
+    // const rNumsNoDuplicates = await removeDuplicates(candidates, level);
+    const rNumsNoDuplicates = await removeDuplicatesFasterApproach(
+        candidates,
+        level
+    );
 
     const output: WaybackItem[] = [];
 
@@ -441,5 +445,172 @@ export const removeDuplicates = async (
 
         // in case of error, return all release numbers without removing duplicates
         return candidates.map((c) => c.releaseNumber);
+    }
+};
+
+export const removeDuplicatesFasterApproach = async (
+    candidates: Array<LocalChangeCandidate>,
+    zoomLevel: number
+): Promise<Array<number>> => {
+    if (!candidates || !candidates.length) {
+        return [];
+    }
+
+    // if there's only one candidate, no need to process further
+    if (candidates.length === 1) {
+        return candidates.map((c) => c.releaseNumber);
+    }
+
+    // for zoom levels 11 and below, we skip duplicate removal process
+    // as tile images at these zoom levels have less updates and changes over time
+    // thus are less likely to have duplicate images
+    if (zoomLevel <= 11) {
+        // console.log(
+        //     'Skipping duplicate removal process for zoom level',
+        //     zoomLevel
+        // );
+        return candidates.map((c) => c.releaseNumber);
+    }
+
+    console.log(
+        `Starting duplicate removal process for ${candidates.length} candidates at zoom level ${zoomLevel}.`
+    );
+
+    // Group consecutive candidates by size. Each uninterrupted run of candidates sharing the same
+    // size forms one group. Groups with more than one member need image data fetched and compared
+    // to detect duplicates; singleton groups are guaranteed unique without any image fetch.
+    const candidatesGroups: LocalChangeCandidate[][] = [];
+
+    for (let i = 0; i < candidates.length; i++) {
+        const currCandidate = candidates[i];
+        const prevCandidate = candidates[i - 1];
+
+        // Start a new group on the first iteration or whenever the size changes
+        if (!prevCandidate || currCandidate.size !== prevCandidate.size) {
+            candidatesGroups.push([currCandidate]);
+            continue;
+        }
+
+        // Sizes match — append to the current group
+        const lastGroup = candidatesGroups[candidatesGroups.length - 1];
+        lastGroup.push(currCandidate);
+    }
+
+    console.log(
+        `Formed ${candidatesGroups.length} groups based on size. ${
+            candidatesGroups.filter((g) => g.length > 1).length
+        } groups have more than one candidate and require image data fetching to check for duplicates.`
+    );
+
+    try {
+        // Process each group to remove duplicates. Groups with only one candidate are returned as-is since they are unique by definition.
+        // Groups with multiple candidates are passed to the removeDuplicatesFromGroup function for image data comparison and duplicate removal.
+        // The results are then flattened back into a single array of candidates with duplicates removed.
+        const groupsWithDuplicatesRemoved = await Promise.all(
+            candidatesGroups.map((group) => {
+                if (group.length === 1) {
+                    // This group has only one candidate, so it is unique by definition
+                    return group;
+                }
+
+                // This group has multiple candidates with the same size, so we need to check for duplicates by fetching image data
+                return removeDuplicatesFromGroup(group);
+            })
+        );
+
+        // Flatten the array of groups back into a single array of candidates, now with duplicates removed
+        const uniqueCandidates = groupsWithDuplicatesRemoved.flat();
+
+        console.log(
+            `After processing all candidates, ${uniqueCandidates.length} unique candidates remain out of the original ${candidates.length} candidates.`
+        );
+
+        return uniqueCandidates.map((c) => c.releaseNumber);
+    } catch (err) {
+        console.error('Error during duplicate removal process', err);
+        // In case of error, return all release numbers without removing duplicates
+        return candidates.map((c) => c.releaseNumber);
+    }
+};
+
+const removeDuplicatesFromGroup = async (
+    candidates: LocalChangeCandidate[]
+): Promise<LocalChangeCandidate[]> => {
+    if (!candidates || !candidates.length) {
+        return [];
+    }
+
+    if (candidates.length === 1) {
+        return candidates;
+    }
+
+    // first candidate in the group is the most recent one as the candidates are sorted by release date in descending order
+    const mostRecentCandidate = candidates[0];
+    // last candidate in the group is the oldest one as the candidates are sorted by release date in descending order
+    const oldestCandidate = candidates[candidates.length - 1];
+
+    // fetch image data for both the most recent candidate and the oldest candidate in the group and compare the image data of these two candidates to determine if they are duplicates.
+    const imageDataPromise = Promise.all([
+        getImageData(
+            mostRecentCandidate.url,
+            mostRecentCandidate.releaseNumber
+        ),
+        getImageData(oldestCandidate.url, oldestCandidate.releaseNumber),
+    ]);
+
+    try {
+        const [firstResult, lastResult] = await imageDataPromise;
+
+        // if the image data of the first and last candidate are identical,it is very likely that all candidates in this group are duplicates of each other, thus we can keep the oldest candidate and remove the rest of the candidates in this group
+        if (areUint8ArraysEqual(firstResult.data, lastResult.data)) {
+            return [oldestCandidate];
+        }
+
+        console.log(
+            `Candidates with release numbers ${mostRecentCandidate.releaseNumber} and ${oldestCandidate.releaseNumber} have different image data. Fetching image data for all candidates in this group to determine which candidates are duplicates and which candidates are unique.`
+        );
+
+        // if the image data of the first and last candidate are different, we cannot determine which candidates in this group are duplicates,
+        // thus we should fetch image data for all candidates in this group and compare the image data of each candidate with each other to determine which candidates are duplicates and which candidates are unique
+        const allImageDataPromise = candidates.map((candidate) => {
+            return getImageData(candidate.url, candidate.releaseNumber);
+        });
+
+        const imageDataResults = await Promise.all(allImageDataPromise);
+
+        const imageDataByReleaseNumber = new Map<number, Uint8Array>();
+
+        // map image data results by release number for quick access
+        for (const result of imageDataResults) {
+            imageDataByReleaseNumber.set(result.releaseNumber, result.data);
+        }
+
+        const uniqueCandidates: LocalChangeCandidate[] = [];
+
+        // loop from the last candidate (oldest release) to the first candidate (most recent release) in the group, and compare the image data of the current candidate with the image data of the last unique candidate that was added to the uniqueCandidates list. If the image data are different, add the current candidate to the uniqueCandidates list; if the image data are identical, skip the current candidate as it is a duplicate of the last unique candidate.
+        for (let i = imageDataResults.length - 1; i >= 0; i--) {
+            const currCandidate = candidates[i];
+            const currImageData = imageDataResults[i].data;
+
+            const lastUniqueCandidate =
+                uniqueCandidates[uniqueCandidates.length - 1];
+            const lastUniqueImageData = lastUniqueCandidate
+                ? imageDataByReleaseNumber.get(
+                      lastUniqueCandidate.releaseNumber
+                  ) || null
+                : null;
+
+            if (
+                !lastUniqueImageData ||
+                !areUint8ArraysEqual(currImageData, lastUniqueImageData)
+            ) {
+                uniqueCandidates.push(currCandidate);
+            }
+        }
+
+        return uniqueCandidates;
+    } catch (err) {
+        console.error('failed to fetch image data for duplicate removal', err);
+        return candidates;
     }
 };
