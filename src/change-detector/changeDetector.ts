@@ -448,6 +448,24 @@ export const removeDuplicates = async (
     }
 };
 
+/**
+ * An optimized alternative to {@link removeDuplicates} that reduces the number of image fetches
+ * by first grouping consecutive candidates that share the same tile size.
+ *
+ * Strategy:
+ * 1. Group candidates into runs of consecutive equal-size entries. Singleton groups are kept as-is
+ *    since a unique size guarantees a unique image without any network request.
+ * 2. For each multi-candidate group, delegate to {@link removeDuplicatesFromGroup}, which uses a
+ *    fast path (compare only the newest and oldest) and falls back to a full comparison only when
+ *    the two boundary images differ.
+ * 3. Results from all groups are flattened back into a single ordered array.
+ *
+ * On error, all candidates are returned unchanged so the caller always receives a usable result.
+ *
+ * @param candidates Ordered array (newest → oldest release) of candidates to deduplicate
+ * @param zoomLevel Zoom level of the tile; duplicate removal is skipped for levels ≤ 11
+ * @returns A Promise resolving to an array of unique release numbers with duplicates removed
+ */
 export const removeDuplicatesFasterApproach = async (
     candidates: Array<LocalChangeCandidate>,
     zoomLevel: number
@@ -533,6 +551,22 @@ export const removeDuplicatesFasterApproach = async (
     }
 };
 
+/**
+ * Removes duplicate candidates from a group of candidates that all share the same tile size.
+ *
+ * Uses a two-stage strategy to minimise network requests:
+ * 1. **Fast path** — fetch only the newest and oldest candidates and compare their image data.
+ *    If they are identical, all candidates in between are assumed to be duplicates as well,
+ *    and only the oldest candidate is kept.
+ * 2. **Slow path** — if the boundary images differ, fetch image data for every candidate and
+ *    walk from oldest to newest, keeping a candidate only when its image differs from the
+ *    previously kept one.
+ *
+ * On error, all candidates are returned unchanged.
+ *
+ * @param candidates Ordered array (newest → oldest release) of same-size candidates
+ * @returns A Promise resolving to the deduplicated subset of the input candidates
+ */
 const removeDuplicatesFromGroup = async (
     candidates: LocalChangeCandidate[]
 ): Promise<LocalChangeCandidate[]> => {
