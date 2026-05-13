@@ -67,6 +67,16 @@ type IResponseWaybackTilemap = {
     size: number[];
 };
 
+type GetWaybackItemsWithLocalChangesOptions = {
+    abortController?: AbortController;
+    /**
+     * If set to true, the change detector will only use the size of the tile image data to filter out duplicate releases,
+     * without fetching and comparing the actual image data. This may result some actual releases with local changes being incorrectly identified as duplicates and thus not included in the final output,
+     * but it can significantly improve the performance of the change detector by reducing the number of image data fetches and comparisons needed.
+     */
+    onlyUseSizeToFilterDuplicates?: boolean;
+};
+
 /**
  * Retrieves a list of world imagery wayback releases with local changes for a specified geographic point at a given zoom level.
  * It fetches wayback configuration data, find the release of wayback items with local changes, and determines unique release associated
@@ -84,10 +94,12 @@ export const getWaybackItemsWithLocalChanges = async (
         longitude: number;
     },
     zoom: number,
-    abortController?: AbortController
-    // shouldNotUseSizeToFilterDuplicates?: boolean
+    options?: GetWaybackItemsWithLocalChangesOptions
 ): Promise<WaybackItem[]> => {
     const { longitude, latitude } = point;
+
+    const { abortController, onlyUseSizeToFilterDuplicates = false } =
+        options || {};
 
     const level = +zoom.toFixed(0);
     const column = long2tile(longitude, level);
@@ -139,7 +151,8 @@ export const getWaybackItemsWithLocalChanges = async (
     // const rNumsNoDuplicates = await removeDuplicates(candidates, level);
     const rNumsNoDuplicates = await removeDuplicatesFasterApproach(
         candidates,
-        level
+        level,
+        onlyUseSizeToFilterDuplicates
     );
 
     const output: WaybackItem[] = [];
@@ -464,11 +477,13 @@ export const removeDuplicates = async (
  *
  * @param candidates Ordered array (newest → oldest release) of candidates to deduplicate
  * @param zoomLevel Zoom level of the tile; duplicate removal is skipped for levels ≤ 11
+ * @param onlyUseSizeToFilterDuplicates If true, candidates are considered duplicates if their sizes match, without fetching image data. This may lead to false positives but improves performance by avoiding network requests.
  * @returns A Promise resolving to an array of unique release numbers with duplicates removed
  */
 export const removeDuplicatesFasterApproach = async (
     candidates: Array<LocalChangeCandidate>,
-    zoomLevel: number
+    zoomLevel: number,
+    onlyUseSizeToFilterDuplicates = false
 ): Promise<Array<number>> => {
     if (!candidates || !candidates.length) {
         return [];
@@ -532,7 +547,10 @@ export const removeDuplicatesFasterApproach = async (
                 }
 
                 // This group has multiple candidates with the same size, so we need to check for duplicates by fetching image data
-                return removeDuplicatesFromGroup(group);
+                return removeDuplicatesFromGroup(
+                    group,
+                    onlyUseSizeToFilterDuplicates
+                );
             })
         );
 
@@ -565,10 +583,12 @@ export const removeDuplicatesFasterApproach = async (
  * On error, all candidates are returned unchanged.
  *
  * @param candidates Ordered array (newest → oldest release) of same-size candidates
+ * @param onlyUseSizeToFilterDuplicates If true, candidates are considered duplicates if their sizes match, without fetching image data. This may lead to false positives but improves performance by avoiding network requests.
  * @returns A Promise resolving to the deduplicated subset of the input candidates
  */
 const removeDuplicatesFromGroup = async (
-    candidates: LocalChangeCandidate[]
+    candidates: LocalChangeCandidate[],
+    onlyUseSizeToFilterDuplicates = false
 ): Promise<LocalChangeCandidate[]> => {
     if (!candidates || !candidates.length) {
         return [];
@@ -576,6 +596,11 @@ const removeDuplicatesFromGroup = async (
 
     if (candidates.length === 1) {
         return candidates;
+    }
+
+    if (onlyUseSizeToFilterDuplicates) {
+        // Since all candidates in this group have the same size, we will consider them all as duplicates and keep only the oldest one
+        return [candidates[candidates.length - 1]];
     }
 
     // first candidate in the group is the most recent one as the candidates are sorted by release date in descending order
