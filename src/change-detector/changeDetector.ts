@@ -68,7 +68,11 @@ type IResponseWaybackTilemap = {
 };
 
 type GetWaybackItemsWithLocalChangesOptions = {
-    abortController?: AbortController;
+    /**
+     * Signal from an AbortController that can be used to cancel the operation if needed.
+     * If the signal is aborted, the function will throw an error indicating that the task has been aborted by the user.
+     */
+    signal?: AbortSignal;
     /**
      * If set to true, the change detector will only use the size of the tile image data to filter out duplicate releases,
      * without fetching and comparing the actual image data. This may result some actual releases with local changes being incorrectly identified as duplicates and thus not included in the final output,
@@ -84,7 +88,7 @@ type GetWaybackItemsWithLocalChangesOptions = {
  *
  * @param point The geographic coordinates (longitude and latitude) of the location of interest, (e.g., `{longitude: -100.05, latitude: 35.10}`)
  * @param zoom The zoom level used to determine the level of detail for the geographic point
- * @abortController AbortController that will be used in case user needs to cancel the pending task
+ * @param options Optional parameters for the function, including an AbortSignal to cancel the operation and a flag to control duplicate filtering behavior
  * @returns {Promise<WaybackItem[]>} A Promise that resolves with an array of unique releases of wayback items
  *          associated with local changes for the given geographic point and zoom level.
  */
@@ -98,8 +102,7 @@ export const getWaybackItemsWithLocalChanges = async (
 ): Promise<WaybackItem[]> => {
     const { longitude, latitude } = point;
 
-    const { abortController, onlyUseSizeToFilterDuplicates = false } =
-        options || {};
+    const { signal, onlyUseSizeToFilterDuplicates = false } = options || {};
 
     const level = +zoom.toFixed(0);
     const column = long2tile(longitude, level);
@@ -164,7 +167,7 @@ export const getWaybackItemsWithLocalChanges = async (
         }
     }
 
-    if (abortController?.signal.aborted) {
+    if (signal?.aborted) {
         throw new Error(
             'Task aborted: getWaybackItemsWithLocalChanges has been aborted by the user.'
         );
