@@ -532,11 +532,21 @@ export const removeDuplicatesFasterApproach = async (
         lastGroup.push(currCandidate);
     }
 
-    console.log(
-        `Formed ${candidatesGroups.length} groups based on size. ${
-            candidatesGroups.filter((g) => g.length > 1).length
-        } groups have more than one candidate and require image data fetching to check for duplicates.`
-    );
+    if (onlyUseSizeToFilterDuplicates) {
+        console.log(
+            `Formed ${
+                candidatesGroups.length
+            } groups based on size. Since onlyUseSizeToFilterDuplicates is true, all candidates within each group are considered duplicates. ${
+                candidatesGroups.filter((g) => g.length > 1).length
+            } groups have more than one candidate and only the oldest candidate in each of these groups will be kept.`
+        );
+    } else {
+        console.log(
+            `Formed ${candidatesGroups.length} groups based on size. ${
+                candidatesGroups.filter((g) => g.length > 1).length
+            } groups have more than one candidate and require image data fetching to check for duplicates.`
+        );
+    }
 
     try {
         // Process each group to remove duplicates. Groups with only one candidate are returned as-is since they are unique by definition.

@@ -67,16 +67,17 @@ Here is an example of the response returned by `getWaybackItems()`:
 Return a list of [`WaybackItem`](#waybackitem) with local changes for a specified geographic point at a given zoom level.
 
 **Parameters**:
-| Parameter | Type                                       | Description                                                                                                                      |
-|-----------|--------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
-| Point     | `{ latitude: number; longitude: number; }` | The geographic coordinates (longitude and latitude) of the location of interest, (e.g., `{longitude: -100.05, latitude: 35.10}`) |
-| Zoom      | number                                     | The zoom level used to determine the level of detail for the geographic point                                                    |
-
+| Parameter                               | Type                                       | Required | Default | Description                                                                                                                      |
+|-----------------------------------------|--------------------------------------------|----------|---------|----------------------------------------------------------------------------------------------------------------------------------|
+| `point`                                 | `{ latitude: number; longitude: number; }` | Yes      | —       | The geographic coordinates (longitude and latitude) of the location of interest, (e.g., `{longitude: -100.05, latitude: 35.10}`) |
+| `zoom`                                  | `number`                                   | Yes      | —       | The zoom level used to determine the level of detail for the geographic point                                                    |
+| `options.signal`                        | `AbortSignal`                              | No       | —       | An `AbortSignal` to cancel the operation. If aborted, the function throws an error.                                              |
+| `options.onlyUseSizeToFilterDuplicates` | `boolean`                                  | No       | `false` | When `true`, duplicate releases are filtered by tile size alone without fetching image data. This can significantly improve performance, but may cause some unique releases to be incorrectly excluded. |
 
 **Returns**:
 | Type          | Description                                                                                                                                                                        |
 |---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Promise<[`WaybackItem`](#waybackitem)[]> | When resolved, returns a list of [`WaybackItem`](#waybackitem) with local changes.|
+| `Promise<`[`WaybackItem`](#waybackitem)`[]>` | When resolved, returns a list of [`WaybackItem`](#waybackitem) with local changes.|
 
 **Example**:
 ```js
@@ -90,6 +91,23 @@ const waybackItems = await getWaybackItemsWithLocalChanges(
         latitude: 34.0556,
     },
     15
+);
+```
+
+**Example with options**:
+```js
+const controller = new AbortController();
+
+const waybackItems = await getWaybackItemsWithLocalChanges(
+    {
+        longitude: 117.1825,
+        latitude: 34.0556,
+    },
+    15,
+    {
+        signal: controller.signal,
+        onlyUseSizeToFilterDuplicates: true,
+    }
 );
 ```
 
