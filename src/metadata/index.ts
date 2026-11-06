@@ -35,6 +35,10 @@ const MIN_ZOOM = 10;
 const { SOURCE_DATE, SOURCE_PROVIDER, SOURCE_NAME, RESOLUTION, ACCURACY } =
     METADATA_FIELD_NAMES;
 
+type GetMetadataOptions = {
+    signal?: AbortSignal;
+};
+
 /**
  * Query the wayback metadata feature service associated with the given wayback release
  * to retrieve information (acquisition date, provider, resolution, etc.) of the world imagery wayback tile image
@@ -43,6 +47,8 @@ const { SOURCE_DATE, SOURCE_PROVIDER, SOURCE_NAME, RESOLUTION, ACCURACY } =
  * @param point  The geographic coordinates (longitude and latitude) representing the location to be used in the query. (e.g., `{longitude: -100.05, latitude: 35.10}`)
  * @param zoom The zoom level for the imagery.
  * @param releaseNumber The world imagery wayback release number.
+ * @param options Optional settings for the query.
+ * @param options.signal An `AbortSignal` to cancel the request. If aborted, the function throws an error.
  *
  * @returns A Promise that resolves to `WaybackMetadata`, containing metadata information like date, provider,
  * source, resolution, and accuracy for the specified location and zoom level.
@@ -53,7 +59,8 @@ export const getMetadata = async (
         longitude: number;
     },
     zoom: number,
-    releaseNumber: number
+    releaseNumber: number,
+    options?: GetMetadataOptions
 ): Promise<WaybackMetadata | null> => {
     if (!point || !zoom || !releaseNumber) {
         throw new Error(
@@ -86,7 +93,9 @@ export const getMetadata = async (
     // Gets the query URL using the provided release number and zoom level
     const requestURL = await getQueryUrl(releaseNumber, zoom);
 
-    const res = await fetch(`${requestURL}?${queryParams.toString()}`);
+    const res = await fetch(`${requestURL}?${queryParams.toString()}`, {
+        signal: options?.signal,
+    });
 
     if (!res.ok) {
         throw new Error(

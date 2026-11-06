@@ -133,11 +133,12 @@ Here is an example of the response returned by `getWaybackItemsWithLocalChanges(
 Query the wayback metadata feature service associated with the given wayback release/version to retrieve information (acquisition date, provider, resolution, etc.) of the world imagery wayback tile image at the specified location and zoom level.
 
 **Parameters**:
-| Parameter     | Type                                       | Description                                                                                                                      |
-|---------------|--------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
-| Point         | `{ latitude: number; longitude: number; }` | The geographic coordinates (longitude and latitude) of the location of interest, (e.g., `{longitude: -100.05, latitude: 35.10}`) |
-| Zoom          | number                                     | The zoom level                                                    |
-| releaseNumber | number                                     | The release number of a given wayback release/version. (You can find the release number from the [`WaybackItem`](#waybackitem))                                                                                        |
+| Parameter        | Type                                       | Required | Description                                                                                                                      |
+|------------------|--------------------------------------------|----------|----------------------------------------------------------------------------------------------------------------------------------|
+| `point`          | `{ latitude: number; longitude: number; }` | Yes      | The geographic coordinates (longitude and latitude) of the location of interest, (e.g., `{longitude: -100.05, latitude: 35.10}`) |
+| `zoom`           | `number`                                   | Yes      | The zoom level                                                                                                                   |
+| `releaseNumber`  | `number`                                   | Yes      | The release number of a given wayback release/version. (You can find the release number from the [`WaybackItem`](#waybackitem)) |
+| `options.signal` | `AbortSignal`                              | No       | An `AbortSignal` to cancel the request. If aborted, the function throws an error.                                                |
 
 **Returns**:
 | Type          | Description                                                                                                                                                                        |
@@ -155,6 +156,23 @@ const metadata = await getMetadata(
     },
     15,
     56102,
+);
+```
+
+**Example with options**:
+```js
+const controller = new AbortController();
+
+const metadata = await getMetadata(
+    {
+        longitude: 117.1825,
+        latitude: 34.0556,
+    },
+    15,
+    56102,
+    {
+        signal: controller.signal,
+    }
 );
 ```
 
