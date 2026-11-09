@@ -1,4 +1,4 @@
-module.exports = {
+export default {
     semi: true,
     arrowParens: 'always',
     trailingComma: 'es5',

@@ -13,19 +13,18 @@
  * limitations under the License.
  */
 
-import { getTileImageURL, getWaybackServiceBaseURL } from '../config';
-import { lat2tile, long2tile } from '../helpers/geometry';
-import { areUint8ArraysEqual } from '../helpers/unit8array';
-import { WaybackItem } from '../types';
+import { getTileImageURL, getWaybackServiceBaseURL } from '../config/index.js';
+import { lat2tile, long2tile } from '../helpers/geometry.js';
+import { areUint8ArraysEqual } from '../helpers/unit8array.js';
+import type { WaybackItem } from '../types/index.js';
 import {
     getWaybackItemByReleaseNumber,
     getWaybackItems,
-} from '../wayback-items/waybackItems';
+} from '../wayback-items/waybackItems.js';
 import {
     getImageData,
     getPreviouseReleaseNumber,
-    IResponseGetImageData,
-} from './changeDetectorHelpers';
+} from './changeDetectorHelpers.js';
 
 type LocalChangeCandidate = {
     /**

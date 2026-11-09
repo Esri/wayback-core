@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { WaybackMetadata } from '../types';
-import { getWaybackItemByReleaseNumber } from '../wayback-items/waybackItems';
-import { METADATA_FIELD_NAMES } from './config';
+import type { WaybackMetadata } from '../types/index.js';
+import { getWaybackItemByReleaseNumber } from '../wayback-items/waybackItems.js';
+import { METADATA_FIELD_NAMES } from './config.js';
 
 type MetadataFeature = {
     attributes: {

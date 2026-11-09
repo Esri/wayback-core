@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { WaybackConfig } from '../types';
+import type { WaybackConfig } from '../types/index.js';
 
 // type SetDefaultOptionsParams = {
 //     /**

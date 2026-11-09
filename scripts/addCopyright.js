@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 // Define your copyright statement
 const copyrightStatement = `/* Copyright 2025 Esri
@@ -63,5 +63,5 @@ function addCopyright(directory) {
 }
 
 // Replace 'your_directory_path' with the path to your repository
-const directoryPath = path.join(__dirname, '../src');
+const directoryPath = path.join(import.meta.dirname, '../src');
 addCopyright(directoryPath);

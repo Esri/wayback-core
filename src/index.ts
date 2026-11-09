@@ -13,17 +13,26 @@
  * limitations under the License.
  */
 
-import { getWaybackItemsWithLocalChanges } from './change-detector/changeDetector';
-import { getMetadata } from './metadata';
-import { getWaybackItems } from './wayback-items/waybackItems';
-import { WaybackItem, WaybackMetadata, WaybackConfig } from './types';
+import { getWaybackItemsWithLocalChanges } from './change-detector/changeDetector.js';
+import { getMetadata } from './metadata/index.js';
+import { getWaybackItems } from './wayback-items/waybackItems.js';
+import type {
+    WaybackItem,
+    WaybackMetadata,
+    WaybackConfig,
+} from './types/index.js';
 import {
     getWaybackSubDomains,
     getWaybackServiceBaseURL,
     setCustomWaybackConfig,
-} from './config';
+} from './config/index.js';
 
-import { long2tile, lat2tile, tile2Long, tile2lat } from './helpers/geometry';
+import {
+    long2tile,
+    lat2tile,
+    tile2Long,
+    tile2lat,
+} from './helpers/geometry.js';
 
 export {
     getWaybackItemsWithLocalChanges,
@@ -36,7 +45,5 @@ export {
     lat2tile,
     tile2Long,
     tile2lat,
-    WaybackItem,
-    WaybackMetadata,
-    WaybackConfig,
 };
+export type { WaybackItem, WaybackMetadata, WaybackConfig };

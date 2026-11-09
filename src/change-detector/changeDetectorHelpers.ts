@@ -1,4 +1,4 @@
-import { getWaybackItems } from '../wayback-items/waybackItems';
+import { getWaybackItems } from '../wayback-items/waybackItems.js';
 
 /**
  * The following code initializes a Map named 'wabackItemsIndicemMap' intended to store

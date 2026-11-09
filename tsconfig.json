@@ -1,15 +1,40 @@
 {
+    "$schema": "https://json.schemastore.org/tsconfig.json",
     "compilerOptions": {
+        // Type checking
+        "allowUnreachableCode": false,
+        "noImplicitOverride": true,
+        "noImplicitReturns": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "strict": true,
+
+        // Modules
+        "module": "ES2022",
+        "moduleResolution": "Bundler",
+        "noUncheckedSideEffectImports": true,
+        "esModuleInterop": true,
+        "types": ["node", "jest"],
+
+        // Emit
+        // tsc emits dist/ directly, so relative imports in src must include
+        // the ".js" extension for the output to be valid ESM in Node.
         "declaration": true,
+        "noEmitOnError": true,
         "outDir": "dist",
         "rootDir": "src",
-        "module": "commonjs",
-        // Modern browsers support all ES6 features, so ES6 is a good choice. 
-        "target": "es6",
-        "esModuleInterop": true,
         "sourceMap": true,
-        "strict": true,
-        "types": ["node", "jest"]
+
+        // Interop constraints
+        "isolatedModules": true,
+        "verbatimModuleSyntax": true,
+
+        // Language and environment
+        "lib": ["dom", "es2024"],
+        "target": "es2024",
+
+        // Completeness
+        "skipLibCheck": true
     },
     "include": ["src/**/*"],
     "exclude": [

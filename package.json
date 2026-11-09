@@ -2,6 +2,7 @@
   "name": "@esri/wayback-core",
   "version": "1.2.0",
   "description": "This package offers core functionalities to retrieve all versions of the World Imagery Wayback archieve, or find versions that contain local changes.",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

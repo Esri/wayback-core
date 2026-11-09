@@ -13,9 +13,12 @@
  * limitations under the License.
  */
 
-import { customWaybackConfigData, getWaybackConfigFileURL } from '../config';
-import { extractDateFromWaybackItemTitle } from './helpers';
-import { WaybackConfig, WaybackItem } from '../types';
+import {
+    customWaybackConfigData,
+    getWaybackConfigFileURL,
+} from '../config/index.js';
+import { extractDateFromWaybackItemTitle } from './helpers.js';
+import type { WaybackConfig, WaybackItem } from '../types/index.js';
 
 /**
  * World Imagery Wayback configuration data, encompassing information
